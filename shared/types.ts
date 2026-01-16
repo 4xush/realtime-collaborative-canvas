@@ -209,10 +209,10 @@ export type ServerMessage =
     }
     | {
         // Global undo occurred. Clients should pop the last operation from their stack.
-        // We send the operation ID for validation.
+        // We send the full operation so clients know WHAT was undone (e.g. ADD vs REMOVE).
         type: ServerMessageType.BROADCAST_UNDO;
         roomId: string;
-        operationId: string;
+        operation: ServerCanvasOperation;
     }
     | {
         // Global redo occurred. Clients should re-apply the operation.
