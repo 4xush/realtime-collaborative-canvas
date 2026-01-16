@@ -18,6 +18,10 @@
  * 3.  **Authoritative Server**: The server assigns global ordering (sequence numbers) to 
  *     operations. This simplifies conflict resolution and ensures all clients eventually 
  *     converge on the same state.
+ * 
+ * 4.  **Strict Operation Authority**: We separate `ClientCanvasOperation` (draft, no seq)
+ *     from `ServerCanvasOperation` (authoritative, required seq). This prevents clients
+ *     from spoofing order and ensures type safety in the history log.
  */
 
 // ==========================================
@@ -45,7 +49,6 @@ export interface Stroke {
     color: string;     // Hex code or RGBA string
     size: number;      // Base brush thickness
     points: Point[];   // The full sequence of points
-    // REMOVED: isErased. We use REMOVE_STROKE operations instead.
 }
 
 /**
@@ -64,21 +67,38 @@ export interface Cursor {
 // ==========================================
 
 /**
- * Discriminated union of all possible persistent changes to the canvas.
- * The server stores a log of these operations.
+ * Operations sent by the CLIENT.
+ * These represent "draft" intentions and do NOT have sequence numbers yet.
  */
-export type CanvasOperation =
+export type ClientCanvasOperation =
     | {
         id: string;        // Operation ID (UUID)
         type: 'ADD_STROKE';
         stroke: Stroke;
-        seq?: number;      // Server-assigned sequence number for ordering
     }
     | {
         id: string;        // Operation ID (UUID)
         type: 'REMOVE_STROKE';
         strokeId: string;  // The ID of the stroke being removed
-        seq?: number;      // Server-assigned sequence number
+    };
+
+/**
+ * Operations stored and broadcast by the SERVER.
+ * These are AUTHORITATIVE and MUST have a sequence number.
+ * The history log consists exclusively of these operations.
+ */
+export type ServerCanvasOperation =
+    | {
+        id: string;        // Operation ID (UUID)
+        type: 'ADD_STROKE';
+        stroke: Stroke;
+        seq: number;       // REQUIRED: Server-assigned sequence number
+    }
+    | {
+        id: string;        // Operation ID (UUID)
+        type: 'REMOVE_STROKE';
+        strokeId: string;  // The ID of the stroke being removed
+        seq: number;       // REQUIRED: Server-assigned sequence number
     };
 
 // ==========================================
@@ -152,7 +172,7 @@ export type ServerMessage =
         // Sends the FULL operation history for deterministic replay.
         type: ServerMessageType.SYNC;
         roomId: string;
-        operations: CanvasOperation[];
+        operations: ServerCanvasOperation[]; // MUST be authoritative operations
     }
     | {
         // Forwarding a start event to other clients (streaming)
@@ -185,7 +205,7 @@ export type ServerMessage =
         // This is the authoritative signal to update the local history stack.
         type: ServerMessageType.BROADCAST_OPERATION;
         roomId: string;
-        operation: CanvasOperation;
+        operation: ServerCanvasOperation; // MUST be authoritative
     }
     | {
         // Global undo occurred. Clients should pop the last operation from their stack.
@@ -198,7 +218,7 @@ export type ServerMessage =
         // Global redo occurred. Clients should re-apply the operation.
         type: ServerMessageType.BROADCAST_REDO;
         roomId: string;
-        operation: CanvasOperation;
+        operation: ServerCanvasOperation; // MUST be authoritative (new sequence number)
     }
     | {
         type: ServerMessageType.BROADCAST_CURSOR;
