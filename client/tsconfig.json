@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "target": "es2020",
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "lib": [
+            "es2020",
+            "dom"
+        ],
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "rootDir": "..",
+        "baseUrl": "."
+    },
+    "include": [
+        "**/*.ts",
+        "../shared/**/*.ts"
+    ]
+}
