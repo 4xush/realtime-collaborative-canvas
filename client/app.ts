@@ -147,45 +147,6 @@ socketClient.onStrokeEnd((userId, id) => {
     renderAllLiveStrokes();
 });
 
-// Helper to render ALL live strokes (local + remote)
-// Currently CanvasRenderer.renderLiveStroke only handles ONE stroke.
-// We might need to update CanvasRenderer to handle multiple live strokes, 
-// OR we just call it multiple times (but it clears the canvas!).
-// Ah, CanvasRenderer.renderLiveStroke clears the canvas.
-// We need a way to render multiple live strokes.
-// Let's check CanvasRenderer.ts.
-// It has `clearLive()` and `renderLiveStroke()`.
-// `renderLiveStroke` calls `this.liveCtx.clearRect(0, 0, ...)` at the start.
-// This is a problem for multiple concurrent users.
-// FIX: We should modify CanvasRenderer to have `renderLiveStrokes(strokes: ...)` 
-// OR just manually manage the clearing in App.ts?
-// Better: Update CanvasRenderer to expose `clearLive()` and `drawStroke()` (publicly?)
-// OR add `renderLiveStrokes(strokes: {points, color, size}[])`.
-// For now, let's just modify App.ts to be smart.
-// Actually, I can't modify CanvasRenderer easily without a task.
-// But wait, `renderLiveStroke` clears the canvas.
-// If I call it for User A, it clears. Then User B, it clears User A.
-// This is a bug in my plan/renderer design for multi-user.
-// I will fix this by adding a `renderLiveStrokes` method to CanvasRenderer in a follow-up,
-// or just hack it here by not using `renderLiveStroke` for remote?
-// No, I should fix it properly.
-// For this step, I will implement the wiring assuming `renderLiveStrokes` exists or similar,
-// and then I will trigger a fix task.
-// Actually, I can just use `drawStroke` if I make it public?
-// No, it's private.
-// I will implement a `renderAllLiveStrokes` in App.ts that:
-// 1. Clears live canvas (using canvasRenderer.clearLive())
-// 2. Draws local stroke (how? `renderLiveStroke` clears...)
-// OK, I need to modify CanvasRenderer.
-// I'll stick to the plan for now, but I'll note this issue.
-// Actually, I can just implement the loop here if I had access to the context.
-// But I don't.
-// I will assume for now that I can call `renderLiveStroke` and it *only* renders that stroke?
-// No, the code says it clears.
-// I will implement a `renderAllLiveStrokes` to just call `renderLiveStroke` for the *last* modified stroke
-// which is wrong but "compiles".
-// THEN I will immediately fix CanvasRenderer.
-
 function renderAllLiveStrokes() {
     const strokesToRender: { points: Point[], color: string, size: number }[] = [];
 
