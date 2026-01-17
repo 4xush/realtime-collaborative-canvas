@@ -98,11 +98,21 @@
         <div id="input-layer"></div>
         
         <div id="ui-layer">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button id="create-room-btn">New Canvas</button>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="join-room-input" placeholder="Room ID" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100px;">
+                    <button id="join-room-btn">Join</button>
+                </div>
+            </div>
+            <div style="width: 1px; background: #ddd; margin: 0 5px;"></div>
             <button id="undo-btn">Undo</button>
             <button id="redo-btn">Redo</button>
             <div style="width: 1px; background: #ddd; margin: 0 5px;"></div>
             <input type="color" id="color-picker" value="#000000">
             <input type="range" id="size-slider" min="1" max="50" value="5">
+            <div style="width: 1px; background: #ddd; margin: 0 5px;"></div>
+            <button id="share-btn" title="Copy Link">Share</button>
         </div>
         
         <div id="status" class="status">Connecting...</div>

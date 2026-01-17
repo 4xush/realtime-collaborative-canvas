@@ -13,6 +13,7 @@ This project focuses on **correct real-time architecture**, **canvas performance
 * 🔄 Global undo / redo (shared across all users)
 * 🧠 Server-authoritative operation history
 * ⚡ Live stroke streaming (sub-100ms perception)
+* 🔗 Room-based canvas sharing via URL
 * 📐 High-DPI (Retina) canvas support
 * 🖱️ Pointer events (mouse + touch)
 
@@ -134,16 +135,21 @@ http://localhost:1234
 
 ## 🧪 Testing Multi-User Collaboration
 
-1. Open **two or more browser windows**
-2. Navigate to:
+### Basic Collaboration
+1. Open the client URL (`http://localhost:1234`).
+2. You will be automatically redirected to a new room (e.g., `/?roomId=...`).
+3. Copy the URL and open it in a second window.
+4. Draw in one window — strokes appear live in the other.
 
-```
-http://localhost:1234/?roomId=test-room
-```
+### Using Room Controls
+* **New Canvas**: Click "New Canvas" to generate a fresh room.
+* **Join Room**: Paste a Room ID and click "Join" to switch rooms.
+* **Share**: Click "Share" to copy the current room link.
 
-3. Draw in one window — strokes should appear live in others
-4. Use **Undo / Redo** — changes apply globally across all users
-5. Refresh a tab — canvas state reconstructs from history
+### Verification
+* Users in **different rooms** cannot see each other's drawings.
+* **Undo / Redo** applies only to the current room.
+* Refreshing the page restores the room's history.
 
 ---
 

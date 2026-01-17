@@ -9,9 +9,18 @@ import { v4 as uuidv4 } from 'uuid';
 // Configuration & State
 // ==========================================
 
-// Get Room ID from URL query param, or default to 'default-room'
+// Get Room ID from URL query param
 const urlParams = new URLSearchParams(window.location.search);
-const ROOM_ID = urlParams.get('roomId') || 'default-room';
+let roomId = urlParams.get('roomId');
+
+// If no room ID, generate one and redirect
+if (!roomId) {
+    roomId = uuidv4();
+    window.location.search = `?roomId=${roomId}`;
+    throw new Error('Redirecting to new room...'); // Stop execution
+}
+
+const ROOM_ID = roomId;
 
 // Current user state
 let currentColor = '#000000';
@@ -31,6 +40,12 @@ const redoBtn = document.getElementById('redo-btn') as HTMLButtonElement;
 const colorPicker = document.getElementById('color-picker') as HTMLInputElement;
 const sizeSlider = document.getElementById('size-slider') as HTMLInputElement;
 const statusDiv = document.getElementById('status') as HTMLDivElement;
+
+// Room UI
+const createRoomBtn = document.getElementById('create-room-btn') as HTMLButtonElement;
+const joinRoomBtn = document.getElementById('join-room-btn') as HTMLButtonElement;
+const joinRoomInput = document.getElementById('join-room-input') as HTMLInputElement;
+const shareBtn = document.getElementById('share-btn') as HTMLButtonElement;
 
 // Components
 const socketClient = new SocketClient('http://localhost:3000', ROOM_ID);
@@ -185,6 +200,29 @@ colorPicker.addEventListener('change', (e) => {
 
 sizeSlider.addEventListener('change', (e) => {
     currentSize = parseInt((e.target as HTMLInputElement).value, 10);
+});
+
+// Room Controls
+createRoomBtn.addEventListener('click', () => {
+    const newId = uuidv4();
+    window.location.href = `/?roomId=${newId}`;
+});
+
+joinRoomBtn.addEventListener('click', () => {
+    const id = joinRoomInput.value.trim();
+    if (id) {
+        window.location.href = `/?roomId=${id}`;
+    }
+});
+
+shareBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+        const originalText = shareBtn.textContent;
+        shareBtn.textContent = 'Copied!';
+        setTimeout(() => {
+            shareBtn.textContent = originalText;
+        }, 2000);
+    });
 });
 
 // ==========================================
