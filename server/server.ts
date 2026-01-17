@@ -1,7 +1,6 @@
 import express from 'express';
 import http from 'http';
 import { Server, Socket } from 'socket.io';
-import { DrawingState } from './drawing-state';
 import {
     ClientMessage,
     ClientMessageType,

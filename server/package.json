@@ -4,7 +4,7 @@
     "description": "Real-time collaborative drawing server",
     "main": "server.ts",
     "scripts": {
-        "start": "node dist/server/server.js",
+        "start": "ts-node server.ts",
         "build": "tsc",
         "dev": "nodemon --exec ts-node server.ts"
     },

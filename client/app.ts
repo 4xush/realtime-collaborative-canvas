@@ -5,7 +5,6 @@ import { InputHandler } from './input/InputHandler';
 import { Point } from '../shared/types';
 import { v4 as uuidv4 } from 'uuid';
 
-declare const process: { env: { [key: string]: string | undefined } };
 
 // ==========================================
 // Configuration & State
@@ -53,7 +52,10 @@ const joinRoomInput = document.getElementById('join-room-input') as HTMLInputEle
 const shareBtn = document.getElementById('share-btn') as HTMLButtonElement;
 
 // Components
+// Components
+// Access process.env directly so bundlers (Parcel/Vite) can replace it at build time
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
+console.log('Connecting to server:', SERVER_URL);
 const socketClient = new SocketClient(SERVER_URL, ROOM_ID);
 const operationStore = new OperationStore();
 const canvasRenderer = new CanvasRenderer(baseCanvas, liveCanvas, cursorCanvas);
@@ -132,6 +134,12 @@ socketClient.onSync((ops) => {
     canvasRenderer.renderHistory(operationStore.getSnapshot());
     statusDiv.textContent = 'Connected';
     statusDiv.style.backgroundColor = 'rgba(0, 128, 0, 0.7)';
+});
+
+socketClient.onError((err) => {
+    statusDiv.textContent = 'Connection Failed';
+    statusDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.7)';
+    console.error('Connection failed:', err);
 });
 
 socketClient.onOperation((op) => {

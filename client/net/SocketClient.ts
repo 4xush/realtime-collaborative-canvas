@@ -28,6 +28,14 @@ export class SocketClient {
             autoConnect: false,
             query: { roomId }
         });
+
+        this.socket.on('connect_error', (err) => {
+            console.error('Socket connection error:', err);
+        });
+    }
+
+    public onError(callback: (err: Error) => void) {
+        this.socket.on('connect_error', callback);
     }
 
     public connect() {
