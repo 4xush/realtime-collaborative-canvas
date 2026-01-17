@@ -15,7 +15,11 @@ import {
 // 1. Server Setup
 // ==========================================
 
+import cors from 'cors';
+
 const app = express();
+app.use(cors()); // Enable CORS for all routes
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
