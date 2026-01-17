@@ -5,6 +5,8 @@ import { InputHandler } from './input/InputHandler';
 import { Point } from '../shared/types';
 import { v4 as uuidv4 } from 'uuid';
 
+declare const process: { env: { [key: string]: string | undefined } };
+
 // ==========================================
 // Configuration & State
 // ==========================================
@@ -51,7 +53,8 @@ const joinRoomInput = document.getElementById('join-room-input') as HTMLInputEle
 const shareBtn = document.getElementById('share-btn') as HTMLButtonElement;
 
 // Components
-const socketClient = new SocketClient('http://localhost:3000', ROOM_ID);
+const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
+const socketClient = new SocketClient(SERVER_URL, ROOM_ID);
 const operationStore = new OperationStore();
 const canvasRenderer = new CanvasRenderer(baseCanvas, liveCanvas, cursorCanvas);
 

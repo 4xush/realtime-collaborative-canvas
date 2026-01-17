@@ -1,18 +1,19 @@
 {
-  "name": "collaborative-canvas",
-  "version": "1.0.0",
-  "private": true,
-  "workspaces": [
-    "client",
-    "server"
-  ],
-  "scripts": {
-    "install:all": "npm install && npm install -w client && npm install -w server",
-    "server": "npm start -w server",
-    "client": "npm start -w client",
-    "start": "concurrently \"npm run server\" \"npm run client\""
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
-  }
+    "name": "collaborative-canvas",
+    "version": "1.0.0",
+    "private": true,
+    "workspaces": [
+        "client",
+        "server"
+    ],
+    "scripts": {
+        "install:all": "npm install && npm install -w client && npm install -w server",
+        "build": "npm run build -w client && npm run build -w server",
+        "server": "npm start -w server",
+        "client": "npm start -w client",
+        "start": "concurrently \"npm run server\" \"npm run client\""
+    },
+    "devDependencies": {
+        "concurrently": "^8.2.2"
+    }
 }
