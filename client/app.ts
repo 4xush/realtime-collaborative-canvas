@@ -34,10 +34,13 @@ let currentStrokeId: string | null = null;
 // DOM Elements
 const baseCanvas = document.getElementById('base-layer') as HTMLCanvasElement;
 const liveCanvas = document.getElementById('live-layer') as HTMLCanvasElement;
+const cursorCanvas = document.getElementById('cursor-layer') as HTMLCanvasElement;
 const inputLayer = document.getElementById('input-layer') as HTMLDivElement;
 const undoBtn = document.getElementById('undo-btn') as HTMLButtonElement;
 const redoBtn = document.getElementById('redo-btn') as HTMLButtonElement;
 const colorPicker = document.getElementById('color-picker') as HTMLInputElement;
+const penBtn = document.getElementById('pen-btn') as HTMLButtonElement;
+const eraserBtn = document.getElementById('eraser-btn') as HTMLButtonElement;
 const sizeSlider = document.getElementById('size-slider') as HTMLInputElement;
 const statusDiv = document.getElementById('status') as HTMLDivElement;
 
@@ -50,7 +53,7 @@ const shareBtn = document.getElementById('share-btn') as HTMLButtonElement;
 // Components
 const socketClient = new SocketClient('http://localhost:3000', ROOM_ID);
 const operationStore = new OperationStore();
-const canvasRenderer = new CanvasRenderer(baseCanvas, liveCanvas);
+const canvasRenderer = new CanvasRenderer(baseCanvas, liveCanvas, cursorCanvas);
 
 // ==========================================
 // Wiring: Input -> Socket & Renderer
@@ -103,6 +106,16 @@ const inputHandler = new InputHandler(inputLayer, {
     }
 });
 
+// Cursor Tracking (Local -> Server)
+inputLayer.addEventListener('pointermove', (e) => {
+    // Throttle? Maybe not needed for local network, but good practice.
+    // For now, raw events.
+    const rect = inputLayer.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    socketClient.emitCursorMove(x, y);
+});
+
 // Local state for the current live stroke (to support full redraws)
 let liveStrokePoints: Point[] = [];
 
@@ -126,9 +139,6 @@ socketClient.onOperation((op) => {
 
 socketClient.onUndo((op) => {
     console.log('Received UNDO', op.id);
-    operationStore.removeOperation(op.id); // Or op.stroke.id? removeOperation handles IDs.
-    // Wait, removeOperation takes an ID. The server sends the *operation* that was undone.
-    // We need to pass the ID of that operation.
     operationStore.removeOperation(op.id);
     canvasRenderer.renderHistory(operationStore.getSnapshot());
 });
@@ -140,8 +150,6 @@ socketClient.onRedo((op) => {
 });
 
 // Remote Live Drawing
-// We need to track remote strokes separately to render them on the live layer.
-// Map<strokeId, { points, color, size }>
 const remoteStrokes = new Map<string, { points: Point[], color: string, size: number }>();
 
 socketClient.onStrokeStart((userId, id, color, size, startPoint) => {
@@ -160,6 +168,14 @@ socketClient.onStrokeMove((userId, id, points) => {
 socketClient.onStrokeEnd((userId, id) => {
     remoteStrokes.delete(id);
     renderAllLiveStrokes();
+});
+
+// Remote Cursors
+const remoteCursors = new Map<string, { x: number, y: number, color: string }>();
+
+socketClient.onCursorMove((userId, x, y, color) => {
+    remoteCursors.set(userId, { x, y, color });
+    canvasRenderer.renderCursors(remoteCursors);
 });
 
 function renderAllLiveStrokes() {
@@ -186,6 +202,24 @@ function renderAllLiveStrokes() {
 // Wiring: UI
 // ==========================================
 
+// ==========================================
+// Tool Management
+// ==========================================
+
+function setTool(tool: 'pen' | 'eraser') {
+    if (tool === 'pen') {
+        currentColor = colorPicker.value;
+        penBtn.classList.add('active');
+        eraserBtn.classList.remove('active');
+        inputLayer.style.cursor = 'crosshair';
+    } else {
+        currentColor = '#f0f0f0'; // Match background
+        penBtn.classList.remove('active');
+        eraserBtn.classList.add('active');
+        inputLayer.style.cursor = 'cell'; // Square cursor for eraser
+    }
+}
+
 undoBtn.addEventListener('click', () => {
     socketClient.emitUndo();
 });
@@ -195,7 +229,16 @@ redoBtn.addEventListener('click', () => {
 });
 
 colorPicker.addEventListener('change', (e) => {
-    currentColor = (e.target as HTMLInputElement).value;
+    // Picking a color automatically switches to Pen
+    setTool('pen');
+});
+
+penBtn.addEventListener('click', () => {
+    setTool('pen');
+});
+
+eraserBtn.addEventListener('click', () => {
+    setTool('eraser');
 });
 
 sizeSlider.addEventListener('change', (e) => {

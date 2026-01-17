@@ -29,16 +29,7 @@ const io = new Server(server, {
 // 2. State Management
 // ==========================================
 
-// Map of roomId -> Authoritative DrawingState
-const rooms = new Map<string, DrawingState>();
-
-// Helper to get or create state for a room
-function getRoomState(roomId: string): DrawingState {
-    if (!rooms.has(roomId)) {
-        rooms.set(roomId, new DrawingState());
-    }
-    return rooms.get(roomId)!;
-}
+import { getRoomState } from './rooms';
 
 // Buffer for active strokes being streamed.
 // We need this to reconstruct the full Stroke object when STROKE_END arrives.
@@ -91,7 +82,6 @@ io.on('connection', (socket: Socket) => {
             // --- Streaming Drawing Events ---
 
             case ClientMessageType.STROKE_START: {
-                // FIX #2: Improve active stroke buffering safety
                 // Key by socketId AND strokeId to handle overlapping strokes or race conditions
                 const bufferKey = `${socket.id}:${msg.id}`;
 
@@ -118,11 +108,11 @@ io.on('connection', (socket: Socket) => {
             }
 
             case ClientMessageType.STROKE_MOVE: {
-                // FIX #2: Use composite key
+                // Use composite key
                 const bufferKey = `${socket.id}:${msg.id}`;
                 const buffer = activeStrokes.get(bufferKey);
 
-                // FIX #3: Add defensive validation for stroke event order
+                // Defensive validation for stroke event order
                 if (!buffer) {
                     console.warn(`Socket ${socket.id} sent STROKE_MOVE for unknown stroke ${msg.id}`);
                     return; // Gracefully ignore
@@ -143,11 +133,11 @@ io.on('connection', (socket: Socket) => {
             }
 
             case ClientMessageType.STROKE_END: {
-                // FIX #2: Use composite key
+                // Use composite key
                 const bufferKey = `${socket.id}:${msg.id}`;
                 const buffer = activeStrokes.get(bufferKey);
 
-                // FIX #3: Add defensive validation for stroke event order
+                // Defensive validation for stroke event order
                 if (!buffer) {
                     console.warn(`Socket ${socket.id} sent STROKE_END for unknown stroke ${msg.id}`);
                     return; // Gracefully ignore
@@ -199,8 +189,7 @@ io.on('connection', (socket: Socket) => {
             case ClientMessageType.UNDO: {
                 const undoneOp = state.undo();
                 if (undoneOp) {
-                    // FIX #1: Fix UNDO broadcast semantics
-                    // Broadcast the full undone operation
+                    // Broadcast the full undone operation so clients know what to remove
                     const undoMsg: ServerMessage = {
                         type: ServerMessageType.BROADCAST_UNDO,
                         roomId,

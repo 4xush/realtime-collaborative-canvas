@@ -16,16 +16,19 @@ import { ServerCanvasOperation, Stroke, Point } from '../../shared/types';
 export class CanvasRenderer {
     private baseCtx: CanvasRenderingContext2D;
     private liveCtx: CanvasRenderingContext2D;
+    private cursorCtx: CanvasRenderingContext2D;
     private width: number = 0;
     private height: number = 0;
 
     constructor(
         private baseCanvas: HTMLCanvasElement,
-        private liveCanvas: HTMLCanvasElement
+        private liveCanvas: HTMLCanvasElement,
+        private cursorCanvas: HTMLCanvasElement
     ) {
         // We assume 2D context is available.
         this.baseCtx = this.baseCanvas.getContext('2d')!;
         this.liveCtx = this.liveCanvas.getContext('2d')!;
+        this.cursorCtx = this.cursorCanvas.getContext('2d')!;
 
         // Optimize for crisp lines
         this.baseCtx.lineCap = 'round';
@@ -49,22 +52,43 @@ export class CanvasRenderer {
         this.baseCanvas.style.height = `${height}px`;
         this.liveCanvas.style.width = `${width}px`;
         this.liveCanvas.style.height = `${height}px`;
+        this.cursorCanvas.style.width = `${width}px`;
+        this.cursorCanvas.style.height = `${height}px`;
 
         // 2. Set the internal bitmap size (scaled by DPR)
         this.baseCanvas.width = width * dpr;
         this.baseCanvas.height = height * dpr;
         this.liveCanvas.width = width * dpr;
         this.liveCanvas.height = height * dpr;
+        this.cursorCanvas.width = width * dpr;
+        this.cursorCanvas.height = height * dpr;
 
         // 3. Scale the context so drawing operations use logical pixels
         this.baseCtx.scale(dpr, dpr);
         this.liveCtx.scale(dpr, dpr);
+        this.cursorCtx.scale(dpr, dpr);
 
         // Reset context properties after resize (they get cleared)
         this.baseCtx.lineCap = 'round';
         this.baseCtx.lineJoin = 'round';
         this.liveCtx.lineCap = 'round';
         this.liveCtx.lineJoin = 'round';
+    }
+
+    /**
+     * Renders remote cursors on the cursor layer.
+     */
+    public renderCursors(cursors: Map<string, { x: number, y: number, color: string }>) {
+        this.cursorCtx.clearRect(0, 0, this.width, this.height);
+
+        for (const cursor of cursors.values()) {
+            this.cursorCtx.fillStyle = cursor.color;
+            this.cursorCtx.beginPath();
+            this.cursorCtx.arc(cursor.x, cursor.y, 5, 0, Math.PI * 2);
+            this.cursorCtx.fill();
+
+            // Optional: Draw a label or name if we had one
+        }
     }
 
     /**
