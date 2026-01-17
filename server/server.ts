@@ -24,6 +24,11 @@ const io = new Server(server, {
     }
 });
 
+// Health check for Render wake-up
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
 // ==========================================
 // 2. State Management
 // ==========================================
