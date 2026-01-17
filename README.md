@@ -83,55 +83,22 @@ collaborative-canvas/
 
 ### 1️⃣ Install Dependencies
 
-You need to install dependencies for both the server and the client.
-
-**Server:**
 ```bash
-cd server
-npm install
-```
-
-**Client:**
-```bash
-cd client
 npm install
 ```
 
 ---
 
-### 2️⃣ Start the Server
+### 2️⃣ Start the Application
 
 ```bash
-cd server
 npm start
 ```
 
-Server runs on:
+This will start both the **server** (port 3000) and the **client** (port 1234) concurrently.
 
-```
-http://localhost:3000
-```
-
----
-
-### 3️⃣ Start the Client
-
-In a separate terminal:
-
-```bash
-cd client
-npm start
-```
-
-Client runs on:
-
-```
-http://localhost:1234
-```
-
-*(Exact port may vary depending on your dev setup.)*
-
----
+*   **Client**: [http://localhost:1234](http://localhost:1234)
+*   **Server**: [http://localhost:3000](http://localhost:3000)
 
 ## 🧪 Testing Multi-User Collaboration
 
