@@ -29,6 +29,77 @@ let currentSize = 5;
 let currentStrokeId: string | null = null;
 
 // ==========================================
+// Health Check Service
+// ==========================================
+
+class HealthCheckService {
+    private maxRetries = 10;
+    private baseDelay = 1000; // 1 second
+    private maxDelay = 30000; // 30 seconds
+    private currentAttempt = 0;
+
+    constructor(private serverUrl: string, private statusElement: HTMLElement) {}
+
+    private updateStatus(message: string, isConnecting: boolean = false) {
+        this.statusElement.innerHTML = isConnecting 
+            ? `<span style="color: orange;">🔄 ${message}</span>`
+            : `<span style="color: red;">❌ ${message}</span>`;
+    }
+
+    private updateStatusSuccess(message: string) {
+        this.statusElement.innerHTML = `<span style="color: green;">✅ ${message}</span>`;
+    }
+
+    private calculateDelay(): number {
+        // Exponential backoff with jitter
+        const exponential = Math.min(this.baseDelay * Math.pow(2, this.currentAttempt), this.maxDelay);
+        const jitter = Math.random() * 0.3 * exponential; // Add 0-30% jitter
+        return Math.floor(exponential + jitter);
+    }
+
+    public async waitForServer(): Promise<void> {
+        this.updateStatus(`Checking server health...`, true);
+        
+        while (this.currentAttempt < this.maxRetries) {
+            try {
+                const response = await fetch(`${this.serverUrl}/health`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: AbortSignal.timeout(5000) // 5 second timeout
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.status === 'ok') {
+                        this.updateStatusSuccess('Server ready');
+                        return; // Success!
+                    }
+                }
+                
+                throw new Error(`Health check failed: ${response.status}`);
+            } catch (error) {
+                this.currentAttempt++;
+                const delay = this.calculateDelay();
+                
+                if (this.currentAttempt >= this.maxRetries) {
+                    this.updateStatus(`Server offline (tried ${this.maxRetries} times). <button onclick="location.reload()" style="margin-left: 8px; padding: 4px 8px; background: #007acc; color: white; border: none; border-radius: 4px; cursor: pointer;">Retry</button>`);
+                    throw new Error('Max health check retries exceeded');
+                }
+
+                const nextRetryIn = Math.ceil(delay / 1000);
+                this.updateStatus(`Server starting up... retrying in ${nextRetryIn}s (attempt ${this.currentAttempt}/${this.maxRetries})`, true);
+                
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+
+    public reset() {
+        this.currentAttempt = 0;
+    }
+}
+
+// ==========================================
 // Initialization
 // ==========================================
 
@@ -283,8 +354,39 @@ shareBtn.addEventListener('click', () => {
 // Start
 // ==========================================
 
-inputHandler.attach();
-socketClient.connect();
+async function initializeApp() {
+    try {
+        // Initialize health check service
+        const healthCheck = new HealthCheckService(SERVER_URL, statusDiv);
+        
+        // Wait for server to be ready (with retries and backoff)
+        await healthCheck.waitForServer();
+        
+        // Server is ready, now connect WebSocket
+        statusDiv.innerHTML = `<span style="color: green;">✅ Connecting to room...</span>`;
+        socketClient.connect();
+        
+        // Setup input handling
+        inputHandler.attach();
+        
+    } catch (error) {
+        console.error('Failed to initialize app:', error);
+        // Status is already updated by healthCheck service
+    }
+}
+
+// Handle socket connection events
+socketClient.onConnect(() => {
+    statusDiv.innerHTML = `<span style="color: green;">✅ Connected to room: ${ROOM_ID}</span>`;
+});
+
+socketClient.onError((error) => {
+    console.error('WebSocket error:', error);
+    statusDiv.innerHTML = `<span style="color: red;">❌ Connection lost. <button onclick="location.reload()" style="margin-left: 8px; padding: 4px 8px; background: #007acc; color: white; border: none; border-radius: 4px; cursor: pointer;">Reconnect</button></span>`;
+});
+
+// Start the application
+initializeApp();
 
 // Handle resize
 window.addEventListener('resize', () => {

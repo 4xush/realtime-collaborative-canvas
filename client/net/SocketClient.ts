@@ -38,6 +38,10 @@ export class SocketClient {
         this.socket.on('connect_error', callback);
     }
 
+    public onConnect(callback: () => void) {
+        this.socket.on('connect', callback);
+    }
+
     public connect() {
         this.socket.connect();
     }

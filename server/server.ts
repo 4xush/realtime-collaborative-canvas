@@ -20,6 +20,11 @@ import cors from 'cors';
 const app = express();
 app.use(cors()); // Enable CORS for all routes
 
+// Health check endpoint
+app.get('/health', (_req, res) => {
+    res.json({ status: 'ok', timestamp: Date.now() });
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
