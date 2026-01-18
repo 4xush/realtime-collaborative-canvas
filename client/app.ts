@@ -136,55 +136,11 @@ socketClient.onSync((ops) => {
     statusDiv.style.backgroundColor = 'rgba(0, 128, 0, 0.7)';
 });
 
-// Server Wake-up Logic (for Render Free Tier)
-async function checkServerHealth() {
-    statusDiv.textContent = 'Waking up server... (this may take 1 min)';
-    statusDiv.style.backgroundColor = 'rgba(255, 165, 0, 0.7)'; // Orange
-
-    const start = Date.now();
-
-    // Try pinging the health endpoint
-    const ping = async () => {
-        try {
-            // Use fetch to ping the HTTP endpoint (not socket)
-            // We assume the HTTP server is on the same host/port as the socket URL
-            const healthUrl = SERVER_URL.replace(/\/$/, '') + '/health';
-            const res = await fetch(healthUrl);
-            if (res.ok) {
-                statusDiv.textContent = 'Server awake! Connecting...';
-                statusDiv.style.backgroundColor = 'rgba(0, 128, 0, 0.7)';
-                socketClient.connect();
-                return true;
-            }
-        } catch (e) {
-            // Ignore error and retry
-        }
-        return false;
-    };
-
-    // Poll every 2 seconds
-    const interval = setInterval(async () => {
-        const elapsed = Math.floor((Date.now() - start) / 1000);
-        statusDiv.textContent = `Waking up server... ${elapsed}s`;
-
-        const isAwake = await ping();
-        if (isAwake) {
-            clearInterval(interval);
-        }
-    }, 2000);
-
-    // Initial attempt
-    ping();
-}
-
 socketClient.onError((err) => {
-    statusDiv.textContent = 'Connection Failed. Retrying...';
+    statusDiv.textContent = 'Connection Failed';
     statusDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.7)';
     console.error('Connection failed:', err);
 });
-
-// Start connection process
-checkServerHealth();
 
 socketClient.onOperation((op) => {
     console.log('Received OP', op.type);
@@ -328,7 +284,7 @@ shareBtn.addEventListener('click', () => {
 // ==========================================
 
 inputHandler.attach();
-// socketClient.connect(); // Handled by checkServerHealth
+socketClient.connect();
 
 // Handle resize
 window.addEventListener('resize', () => {
