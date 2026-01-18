@@ -170,14 +170,23 @@ const inputHandler = new InputHandler(inputLayer, {
         const id = currentStrokeId;
         if (!id) return;
 
-        // 1. Emit end
+        // 1. Move the live stroke to pending (don't clear yet)
+        if (liveStrokePoints.length > 0) {
+            pendingLocalStrokes.set(id, {
+                points: [...liveStrokePoints],
+                color: currentColor,
+                size: currentSize
+            });
+        }
+
+        // 2. Emit end to server
         socketClient.emitStrokeEnd(id);
 
-        // 2. Clear live stroke state locally
+        // 3. Clear live stroke state for next stroke
         liveStrokePoints = [];
         currentStrokeId = null;
 
-        // Re-render to clear the local stroke from live layer (it will be added to history via server op)
+        // 4. Re-render with pending stroke still visible
         renderAllLiveStrokes();
     }
 });
@@ -194,6 +203,9 @@ inputLayer.addEventListener('pointermove', (e) => {
 
 // Local state for the current live stroke (to support full redraws)
 let liveStrokePoints: Point[] = [];
+
+// Track pending strokes that are being drawn locally but not yet confirmed by server
+const pendingLocalStrokes = new Map<string, { points: Point[], color: string, size: number }>();
 
 // ==========================================
 // Wiring: Socket -> Store & Renderer
@@ -215,20 +227,49 @@ socketClient.onError((err) => {
 
 socketClient.onOperation((op) => {
     console.log('Received OP', op.type);
+    
+    // Check if this is our own stroke coming back from server
+    if (op.type === 'ADD_STROKE') {
+        const strokeId = op.stroke.id;
+        const wasPending = pendingLocalStrokes.has(strokeId);
+        
+        if (wasPending) {
+            // Remove from pending (smooth transition from live to history)
+            pendingLocalStrokes.delete(strokeId);
+            console.log('Confirmed local stroke:', strokeId);
+        }
+    }
+    
+    // Add to operation store and re-render
     operationStore.addOperation(op);
     canvasRenderer.renderHistory(operationStore.getSnapshot());
+    
+    // Re-render live strokes (this will now exclude the confirmed stroke)
+    renderAllLiveStrokes();
 });
 
 socketClient.onUndo((op) => {
     console.log('Received UNDO', op.id);
+    
+    // If this was a pending stroke, remove it from pending
+    if (op.type === 'ADD_STROKE') {
+        const strokeId = op.stroke.id;
+        if (pendingLocalStrokes.has(strokeId)) {
+            pendingLocalStrokes.delete(strokeId);
+            console.log('Removed pending stroke due to undo:', strokeId);
+        }
+    }
+    
     operationStore.removeOperation(op.id);
     canvasRenderer.renderHistory(operationStore.getSnapshot());
+    renderAllLiveStrokes(); // Update live layer too
 });
 
 socketClient.onRedo((op) => {
     console.log('Received REDO', op.type);
     operationStore.addOperation(op);
     canvasRenderer.renderHistory(operationStore.getSnapshot());
+    renderAllLiveStrokes(); // Update live layer too
 });
 
 // Remote Live Drawing
@@ -263,13 +304,18 @@ socketClient.onCursorMove((userId, x, y, color) => {
 function renderAllLiveStrokes() {
     const strokesToRender: { points: Point[], color: string, size: number }[] = [];
 
-    // Add local stroke if it exists
+    // Add current live stroke if it exists (actively being drawn)
     if (liveStrokePoints.length > 0) {
         strokesToRender.push({
             points: liveStrokePoints,
             color: currentColor,
             size: currentSize
         });
+    }
+
+    // Add pending local strokes (completed but not yet confirmed by server)
+    for (const pendingStroke of pendingLocalStrokes.values()) {
+        strokesToRender.push(pendingStroke);
     }
 
     // Add remote strokes
@@ -382,6 +428,11 @@ socketClient.onConnect(() => {
 
 socketClient.onError((error) => {
     console.error('WebSocket error:', error);
+    
+    // Clear pending strokes since we can't confirm them
+    pendingLocalStrokes.clear();
+    renderAllLiveStrokes();
+    
     statusDiv.innerHTML = `<span style="color: red;">❌ Connection lost. <button onclick="location.reload()" style="margin-left: 8px; padding: 4px 8px; background: #007acc; color: white; border: none; border-radius: 4px; cursor: pointer;">Reconnect</button></span>`;
 });
 
